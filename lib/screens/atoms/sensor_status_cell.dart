@@ -1,50 +1,29 @@
-import 'package:finger_farm/data/model/sensor.dart';
-import 'package:finger_farm/data/providers/dashboard_provider.dart';
+import 'package:finger_farm/data/providers/customer_sensor_provider.dart'; // 수정된 provider 경로
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class SensorStatusCell extends ConsumerStatefulWidget {
+class SensorStatusCell extends ConsumerWidget {
   final String customerName;
-  const SensorStatusCell({super.key, required this.customerName});
+  final int index;
+
+  const SensorStatusCell({super.key, required this.customerName, required this.index});
 
   @override
-  ConsumerState<SensorStatusCell> createState() => _SensorStatusCellState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 위젯이 화면에 그려지는 순간, 본인의 index에 맞는 예약된 시간에 API를 호출합니다.
+    final sensorAsync = ref.watch(customerSensorProvider((name: customerName, index: index)));
 
-class _SensorStatusCellState extends ConsumerState<SensorStatusCell> {
-  List<Sensor>? _sensors;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSensorData();
-  }
-
-  Future<void> _loadSensorData() async {
-    final tbRepo = ref.read(tbStatusRepositoryProvider);
-    try {
-      final data = await tbRepo.getCustomerSensorsStatus(widget.customerName);
-      if (mounted) {
-        setState(() {
-          _sensors = data;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2));
-    }
-
-    if (_sensors == null || _sensors!.isEmpty) return const Text('N/A');
-
-    final activeCount = _sensors!.where((s) => s.isActive).length;
-    return Text('$activeCount / ${_sensors!.length} ON');
+    return sensorAsync.when(
+      data: (sensors) {
+        if (sensors.isEmpty) return const Text('N/A', style: TextStyle(fontSize: 11));
+        final activeCount = sensors.where((s) => s.isActive).length;
+        return Text(
+          '$activeCount / ${sensors.length} ON',
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+        );
+      },
+      loading: () => const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
+      error: (_, __) => const Icon(Icons.error_outline, size: 14, color: Colors.red),
+    );
   }
 }

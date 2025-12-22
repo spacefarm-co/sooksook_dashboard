@@ -3,9 +3,10 @@ import 'package:finger_farm/data/model/sensor.dart';
 import 'package:finger_farm/data/providers/dashboard_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final customerSensorProvider = FutureProvider.family<List<Sensor>, String>((ref, customerName) async {
+final customerSensorProvider = FutureProvider.family<List<Sensor>, ({String name, int index})>((ref, arg) async {
   final tbRepo = ref.watch(tbStatusRepositoryProvider);
-  // API 호출
-  final sensors = await tbRepo.getCustomerSensorsStatus(customerName);
+
+  // Repository의 수정된 함수 호출 (이름과 인덱스 전달)
+  final sensors = await tbRepo.getCustomerSensorsStatus(arg.name, arg.index);
   return sensors;
 });

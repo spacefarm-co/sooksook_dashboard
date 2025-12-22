@@ -14,7 +14,7 @@ class DeviceExpandableRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sensorAsync = ref.watch(customerSensorProvider(device.customerName));
+    final sensorAsync = ref.watch(customerSensorProvider((name: device.customerName, index: index)));
     final isExpanded = ref.watch(expandedStateProvider(device.customerName));
 
     return Column(

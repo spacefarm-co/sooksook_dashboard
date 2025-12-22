@@ -10,8 +10,12 @@ void main() async {
 
   // 이제 파일이 있으니 주석을 해제하고 정상적으로 초기화합니다.
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  await dotenv.load(fileName: ".env");
+  try {
+    await dotenv.load(fileName: ".env");
+    print(".env 로드 성공");
+  } catch (e) {
+    print(".env 로드 실패: $e");
+  }
   runApp(const ProviderScope(child: MyApp()));
 }
 
