@@ -18,7 +18,7 @@ class Sensor {
   // 쑥마스터인지 확인하는 게터
   bool get isSookMaster => type.contains('Sook Master');
 
-  factory Sensor.fromRawJson(Map<String, dynamic> json, bool activeStatus) {
+  factory Sensor.fromJson(Map<String, dynamic> json, bool activeStatus) {
     return Sensor(
       id: json['id']?['id'] ?? '',
       name: json['name'] ?? '',
