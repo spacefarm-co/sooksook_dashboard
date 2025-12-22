@@ -20,8 +20,9 @@ final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* 
     final customers = customersAsync.value!.docs;
     final balenaDocs = balenaAsync.value!.docs;
 
-    final List<Future<CombinedUserDevice>> futures = [];
+    final List<CombinedUserDevice> results = [];
 
+    // [핵심 수정] Future.wait 대신 for 루프를 사용하여 순차적으로 처리합니다.
     for (var custDoc in customers) {
       final custData = custDoc.data() as Map<String, dynamic>;
       final customerName = custData['name'] ?? 'Unknown';
@@ -37,21 +38,24 @@ final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* 
 
         final uuid = (matchedDev?.data() as Map<String, dynamic>?)?['uuid'];
 
-        // 개별 디바이스 상태 조회 및 통합 작업을 Future 리스트에 추가
-        futures.add(_fetchAllStatuses(connectivityRepo, tbRepo, customerName, mName, uuid, token));
+        // 개별 디바이스 상태 조회 (await를 사용하여 하나가 끝날 때까지 기다림)
+        final combinedDevice = await _fetchAllStatuses(connectivityRepo, tbRepo, customerName, mName, uuid, token);
+
+        results.add(combinedDevice);
+
+        // [429 에러 방지] 서버 부하를 줄이기 위해 요청 사이에 아주 짧은 지연(50ms)을 둡니다.
+        // 농가 수가 많다면 이 시간을 100ms 정도로 늘려보세요.
+        await Future.delayed(const Duration(milliseconds: 50));
       }
     }
 
-    // 모든 비동기 작업(Balena API + ThingsBoard API)을 병렬로 대기
-    final results = await Future.wait(futures);
     yield results;
   } else {
-    // 데이터 로딩 중이거나 값이 없을 때 빈 리스트 반환
     yield [];
   }
 });
 
-// 모든 플랫폼 상태 통합 호출 함수 (Balena + ThingsBoard)
+// 모든 플랫폼 상태 통합 호출 함수 (내용은 동일하되 안정성 강화)
 Future<CombinedUserDevice> _fetchAllStatuses(
   ConnectivityRepository balenaRepo,
   ThingsBoardStatusRepository tbRepo,
@@ -60,7 +64,6 @@ Future<CombinedUserDevice> _fetchAllStatuses(
   String? uuid,
   String token,
 ) async {
-  // 1. Balena 상태 조회 (Cloudlink, Heartbeat)
   bool cloudlink = false;
   bool heartbeat = false;
 
@@ -76,9 +79,13 @@ Future<CombinedUserDevice> _fetchAllStatuses(
     }
   }
 
-  // 2. ThingsBoard 상세 센서 정보 조회 (SensorModel 리스트 반환)
-  // 이제 단순한 bool 리스트가 아닌 상세 정보가 담긴 SensorModel 객체들을 가져옵니다.
-  final List<Sensor> sensors = await tbRepo.getCustomerSensorsStatus(customerName);
+  // ThingsBoard API 호출 (Rate Limit에 가장 취약한 부분)
+  List<Sensor> sensors = [];
+  try {
+    sensors = await tbRepo.getCustomerSensorsStatus(customerName);
+  } catch (e) {
+    print('ThingsBoard API Error ($customerName): $e');
+  }
 
   return CombinedUserDevice(
     customerName: customerName,
@@ -87,6 +94,6 @@ Future<CombinedUserDevice> _fetchAllStatuses(
     token: token,
     isCloudlinkOnline: cloudlink,
     isHeartbeatOnline: heartbeat,
-    sensors: sensors, // List<SensorModel> 타입으로 주입
+    sensors: sensors,
   );
 }
