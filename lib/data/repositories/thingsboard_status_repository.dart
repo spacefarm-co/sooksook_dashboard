@@ -52,7 +52,7 @@ class ThingsBoardStatusRepository {
 
       // 해당 농가의 모든 디바이스 정보 가져오기
       final devices = await _tbClient.getDeviceService().getCustomerDeviceInfos(customer.id!.id!, PageLink(500));
-
+      print('[TB] $customerName 센서 조회 성공, 총 디바이스 수: ${devices.totalElements}');
       // [수정 포인트] map으로 변환 후 where를 사용하여 쑥마스터를 제외합니다.
       return devices.data
           .map((d) => Sensor.fromJson(d.toJson(), d.active ?? false))
