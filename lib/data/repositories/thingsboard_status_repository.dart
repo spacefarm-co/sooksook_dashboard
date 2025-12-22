@@ -1,4 +1,5 @@
 import 'package:finger_farm/data/model/sensor.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:thingsboard_client/thingsboard_client.dart';
 import '../../config/app_config.dart';
 
@@ -24,9 +25,13 @@ class ThingsBoardStatusRepository {
 
   Future<void> _performLogin() async {
     Object? lastError;
+
+    // 파일에서 정보를 읽어옵니다.
+    final String username = dotenv.get('TB_USERNAME');
+    final String password = dotenv.get('TB_PASSWORD');
     for (int i = 0; i < 3; i++) {
       try {
-        await _tbClient.login(LoginRequest('tenant@spacefarm.co.kr', 'HeetsCoffe1!'));
+        await _tbClient.login(LoginRequest(username, password));
         print('[TB] 로그인 성공');
         return;
       } catch (e) {

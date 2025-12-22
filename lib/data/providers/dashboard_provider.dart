@@ -1,4 +1,3 @@
-import 'package:finger_farm/data/model/sensor.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../model/combined_user_device.dart';
 import 'customer_provider.dart';
@@ -18,8 +17,6 @@ final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* 
   if (customersAsync.hasValue && balenaAsync.hasValue) {
     final customers = customersAsync.value!.docs;
     final balenaDocs = balenaAsync.value!.docs;
-
-    final List<CombinedUserDevice> results = [];
 
     // 이제 TB API를 기다릴 필요가 없으므로 병렬 처리가 가능합니다.
     // Future.wait를 사용하여 Balena 정보만 빠르게 가져옵니다.

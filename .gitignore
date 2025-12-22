@@ -67,3 +67,11 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
+# Flutter/Dart build artifacts
+.dart_tool/
+
+# Chrome specific device data (스크린샷에 표시된 항목들)
+.dart_tool/chrome-device/
+
+# Sensitive information
+.env
