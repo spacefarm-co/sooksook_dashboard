@@ -55,7 +55,7 @@ class ThingsBoardStatusRepository {
 
       // 1. 순차적 로딩을 위한 인덱스 기반 딜레이
       // 위에서부터 차례대로 로딩되는 시각적 효과와 서버 부하 분산 효과를 동시에 얻습니다.
-      await Future.delayed(Duration(milliseconds: 300 * index));
+      await Future.delayed(Duration(milliseconds: 500 * index));
 
       final customers = await _tbClient.getCustomerService().getCustomers(PageLink(200));
 
