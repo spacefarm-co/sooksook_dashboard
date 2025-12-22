@@ -1,35 +1,40 @@
+import 'package:finger_farm/data/providers/customer_sensor_provider.dart';
+import 'package:finger_farm/data/providers/expanded_state_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/model/combined_user_device.dart';
 import '../../../../data/model/sensor.dart';
 
-class DeviceExpandableRow extends StatefulWidget {
+class DeviceExpandableRow extends ConsumerWidget {
   final CombinedUserDevice device;
   final int index;
+
   const DeviceExpandableRow({super.key, required this.device, required this.index});
 
   @override
-  State<DeviceExpandableRow> createState() => _DeviceExpandableRowState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 1. 센서 데이터 구독: 위젯이 빌드(그려지기 시작)될 때 자동으로 API 호출 및 캐싱
+    final sensorAsync = ref.watch(customerSensorProvider(device.customerName));
 
-class _DeviceExpandableRowState extends State<DeviceExpandableRow> {
-  bool _isExpanded = false;
+    // 2. 확장 상태 구독: 스크롤해도 상태가 유지됨
+    final isExpanded = ref.watch(expandedStateProvider(device.customerName));
 
-  @override
-  Widget build(BuildContext context) {
-    final device = widget.device;
     return Column(
       children: [
         InkWell(
-          onTap: () => setState(() => _isExpanded = !_isExpanded),
+          onTap: () {
+            // 클릭 시 확장 상태만 토글
+            ref.read(expandedStateProvider(device.customerName).notifier).state = !isExpanded;
+          },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
             decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
-              color: _isExpanded ? Colors.blue.withOpacity(0.02) : Colors.transparent,
+              color: isExpanded ? Colors.blue.withOpacity(0.04) : Colors.transparent,
             ),
             child: Row(
               children: [
-                SizedBox(width: 30, child: Text('${widget.index}', style: TextStyle(fontSize: 10))),
+                SizedBox(width: 30, child: Text('$index', style: const TextStyle(fontSize: 10))),
                 Expanded(
                   flex: 1,
                   child: Text(
@@ -53,19 +58,30 @@ class _DeviceExpandableRowState extends State<DeviceExpandableRow> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Text(
-                        device.sensors.isEmpty ? 'N/A' : '${device.activeSensorCount}/${device.totalSensorCount}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color:
-                              device.sensors.isEmpty
-                                  ? Colors.grey
-                                  : (device.isAllSensorsNormal ? Colors.blue : Colors.orange),
-                        ),
+                      // 센서 요약 정보 표시 (캐싱된 데이터 활용)
+                      sensorAsync.when(
+                        data: (sensors) {
+                          final activeCount = sensors.where((s) => s.isActive).length;
+                          return Text(
+                            sensors.isEmpty ? 'N/A' : '$activeCount/${sensors.length}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color:
+                                  sensors.isEmpty
+                                      ? Colors.grey
+                                      : (activeCount == sensors.length ? Colors.blue : Colors.orange),
+                            ),
+                          );
+                        },
+                        loading:
+                            () =>
+                                const SizedBox(width: 10, height: 10, child: CircularProgressIndicator(strokeWidth: 2)),
+                        error: (_, __) => const Icon(Icons.error_outline, size: 12, color: Colors.red),
                       ),
+                      const SizedBox(width: 4),
                       Icon(
-                        _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                        isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
                         size: 14,
                         color: Colors.grey,
                       ),
@@ -76,20 +92,39 @@ class _DeviceExpandableRowState extends State<DeviceExpandableRow> {
             ),
           ),
         ),
-        if (_isExpanded) _buildExpandedDetails(device),
+        // 확장 영역 표시
+        if (isExpanded)
+          sensorAsync.when(
+            data: (sensors) => _buildExpandedDetails(sensors),
+            loading: () => _buildLoadingExpandedDetails(),
+            error:
+                (err, _) => Container(
+                  padding: const EdgeInsets.all(10),
+                  child: Text("에러 발생: $err", style: const TextStyle(fontSize: 10, color: Colors.red)),
+                ),
+          ),
       ],
     );
   }
 
-  Widget _buildExpandedDetails(CombinedUserDevice device) {
+  Widget _buildExpandedDetails(List<Sensor> sensors) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 10, 15, 10),
       color: Colors.grey[50],
       child:
-          device.sensors.isEmpty
+          sensors.isEmpty
               ? const Text("연결된 센서 정보가 없습니다.", style: TextStyle(fontSize: 11, color: Colors.grey))
-              : Column(children: device.sensors.map((sensor) => _buildSensorItem(sensor)).toList()),
+              : Column(children: sensors.map((sensor) => _buildSensorItem(sensor)).toList()),
+    );
+  }
+
+  Widget _buildLoadingExpandedDetails() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      color: Colors.grey[50],
+      child: const Center(child: Text("센서 정보를 가져오는 중...", style: TextStyle(fontSize: 11, color: Colors.blue))),
     );
   }
 

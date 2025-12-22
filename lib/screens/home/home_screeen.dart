@@ -38,7 +38,6 @@ class HomeScreen extends ConsumerWidget {
                 sortedList.sort((a, b) => a.customerName.compareTo(b.customerName));
 
                 return ListView.builder(
-                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                   itemCount: sortedList.length,
                   itemBuilder: (context, index) => DeviceExpandableRow(device: sortedList[index], index: index + 1),
                 );

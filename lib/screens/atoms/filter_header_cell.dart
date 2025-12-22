@@ -41,47 +41,81 @@ class FilterHeaderCell extends ConsumerWidget {
   void _showFilterDialog(BuildContext context, WidgetRef ref, String title) {
     final filters = ref.read(filterProvider);
     final filterNotifier = ref.read(filterProvider.notifier);
+    final regions = ref.read(availableRegionsProvider);
 
     showDialog(
       context: context,
       builder:
           (context) => AlertDialog(
             title: Text('$title 필터', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (title == '지역') ...[
-                  FilterTile(
-                    label: '전체',
-                    isSelected: filters.region == '전체',
-                    onTap: () => filterNotifier.state = filters.copyWith(region: '전체'),
-                  ),
-                  FilterTile(
-                    label: '대저',
-                    isSelected: filters.region == '대저',
-                    onTap: () => filterNotifier.state = filters.copyWith(region: '대저'),
-                  ),
-                  // ... 밀양, 거창도 같은 방식으로 추가
-                ] else if (title == '클라우드') ...[
-                  FilterTile(
-                    label: '전체',
-                    isSelected: filters.cloudOnline == null,
-                    onTap:
-                        () =>
-                            filterNotifier.state = DashboardFilters(
-                              region: filters.region,
-                              heartbeatOnline: filters.heartbeatOnline,
-                            ),
-                  ),
-                  FilterTile(
-                    label: 'ON',
-                    isSelected: filters.cloudOnline == true,
-                    onTap: () => filterNotifier.state = filters.copyWith(cloudOnline: true),
-                  ),
-                  // ... OFF 추가
+            content: SingleChildScrollView(
+              // 필터가 많아질 경우를 대비
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 1. 지역 필터 (동적 리스트)
+                  if (title == '지역')
+                    ...regions.map(
+                      (r) => FilterTile(
+                        label: r,
+                        isSelected: filters.region == r,
+                        onTap: () {
+                          filterNotifier.state = filters.copyWith(region: r);
+                        },
+                      ),
+                    ),
+
+                  // 2. 클라우드 필터 (전체/ON/OFF)
+                  if (title == '클라우드') ...[
+                    FilterTile(
+                      label: '전체',
+                      isSelected: filters.cloudOnline == null,
+                      onTap: () {
+                        filterNotifier.state = filters.copyWith(clearCloud: true);
+                      },
+                    ),
+                    FilterTile(
+                      label: 'ON',
+                      isSelected: filters.cloudOnline == true,
+                      onTap: () {
+                        filterNotifier.state = filters.copyWith(cloudOnline: true, clearCloud: false);
+                      },
+                    ),
+                    FilterTile(
+                      label: 'OFF',
+                      isSelected: filters.cloudOnline == false,
+                      onTap: () {
+                        filterNotifier.state = filters.copyWith(cloudOnline: false, clearCloud: false);
+                      },
+                    ),
+                  ],
+
+                  // 3. 하트비트 필터 (전체/ON/OFF)
+                  if (title == '하트비트') ...[
+                    FilterTile(
+                      label: '전체',
+                      isSelected: filters.heartbeatOnline == null,
+                      onTap: () {
+                        filterNotifier.state = filters.copyWith(clearHeartbeat: true);
+                      },
+                    ),
+                    FilterTile(
+                      label: 'ON',
+                      isSelected: filters.heartbeatOnline == true,
+                      onTap: () {
+                        filterNotifier.state = filters.copyWith(heartbeatOnline: true, clearHeartbeat: false);
+                      },
+                    ),
+                    FilterTile(
+                      label: 'OFF',
+                      isSelected: filters.heartbeatOnline == false,
+                      onTap: () {
+                        filterNotifier.state = filters.copyWith(heartbeatOnline: false, clearHeartbeat: false);
+                      },
+                    ),
+                  ],
                 ],
-                // ... 하트비트 생략
-              ],
+              ),
             ),
           ),
     );

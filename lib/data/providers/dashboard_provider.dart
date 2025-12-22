@@ -11,7 +11,6 @@ final tbStatusRepositoryProvider = Provider((ref) => ThingsBoardStatusRepository
 
 final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* {
   final connectivityRepo = ref.watch(connectivityRepositoryProvider);
-  final tbRepo = ref.watch(tbStatusRepositoryProvider);
 
   final customersAsync = ref.watch(customersProvider);
   final balenaAsync = ref.watch(balenaDevicesProvider);
@@ -22,44 +21,42 @@ final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* 
 
     final List<CombinedUserDevice> results = [];
 
-    // [핵심 수정] Future.wait 대신 for 루프를 사용하여 순차적으로 처리합니다.
+    // 이제 TB API를 기다릴 필요가 없으므로 병렬 처리가 가능합니다.
+    // Future.wait를 사용하여 Balena 정보만 빠르게 가져옵니다.
+    final List<Future<CombinedUserDevice>> futures = [];
+
     for (var custDoc in customers) {
       final custData = custDoc.data() as Map<String, dynamic>;
       final customerName = custData['name'] ?? 'Unknown';
+      final regionName = custData['region_name'] ?? '알수없음'; // 지역 정보 추가
       final sookMasterList = custData['sook_master'] as List? ?? [];
 
       for (var master in sookMasterList) {
         final mName = master['name'] ?? '';
         final token = master['token'] ?? '';
 
-        // Balena UUID 매칭
         final matchedDev =
             balenaDocs.where((d) => (d.data() as Map<String, dynamic>)['device_name'] == mName).firstOrNull;
 
         final uuid = (matchedDev?.data() as Map<String, dynamic>?)?['uuid'];
 
-        // 개별 디바이스 상태 조회 (await를 사용하여 하나가 끝날 때까지 기다림)
-        final combinedDevice = await _fetchAllStatuses(connectivityRepo, tbRepo, customerName, mName, uuid, token);
-
-        results.add(combinedDevice);
-
-        // [429 에러 방지] 서버 부하를 줄이기 위해 요청 사이에 아주 짧은 지연(50ms)을 둡니다.
-        // 농가 수가 많다면 이 시간을 100ms 정도로 늘려보세요.
-        await Future.delayed(const Duration(milliseconds: 50));
+        // TB 호출을 제거한 가벼운 상태 조회 함수 호출
+        futures.add(_fetchBasicStatuses(connectivityRepo, customerName, regionName, mName, uuid, token));
       }
     }
 
-    yield results;
+    final combinedResults = await Future.wait(futures);
+    yield combinedResults;
   } else {
     yield [];
   }
 });
 
-// 모든 플랫폼 상태 통합 호출 함수 (내용은 동일하되 안정성 강화)
-Future<CombinedUserDevice> _fetchAllStatuses(
+/// ThingsBoard 호출을 제외하고 Balena 상태만 빠르게 가져오는 함수
+Future<CombinedUserDevice> _fetchBasicStatuses(
   ConnectivityRepository balenaRepo,
-  ThingsBoardStatusRepository tbRepo,
   String customerName,
+  String regionName,
   String deviceName,
   String? uuid,
   String token,
@@ -79,14 +76,8 @@ Future<CombinedUserDevice> _fetchAllStatuses(
     }
   }
 
-  // ThingsBoard API 호출 (Rate Limit에 가장 취약한 부분)
-  List<Sensor> sensors = [];
-  try {
-    sensors = await tbRepo.getCustomerSensorsStatus(customerName);
-  } catch (e) {
-    print('ThingsBoard API Error ($customerName): $e');
-  }
-
+  // 핵심: Sensors는 빈 리스트로 반환합니다.
+  // 실제 데이터는 UI에서 Expand 할 때 가져옵니다.
   return CombinedUserDevice(
     customerName: customerName,
     deviceName: deviceName,
@@ -94,6 +85,6 @@ Future<CombinedUserDevice> _fetchAllStatuses(
     token: token,
     isCloudlinkOnline: cloudlink,
     isHeartbeatOnline: heartbeat,
-    sensors: sensors,
+    sensors: [],
   );
 }
