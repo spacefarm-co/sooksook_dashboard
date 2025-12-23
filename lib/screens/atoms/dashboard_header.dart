@@ -18,6 +18,7 @@ class DashboardHeader extends ConsumerWidget {
           FilterHeaderCell(flex: 2, title: '디바이스'),
           FilterHeaderCell(flex: 1, title: '클라우드', hasFilter: true),
           FilterHeaderCell(flex: 1, title: '하트비트', hasFilter: true),
+          FilterHeaderCell(flex: 1, title: '마지막 업데이트'),
           const Expanded(
             flex: 1,
             child: Align(

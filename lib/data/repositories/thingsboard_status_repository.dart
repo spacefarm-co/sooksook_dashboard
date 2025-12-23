@@ -1,5 +1,4 @@
 import 'package:finger_farm/data/model/sensor.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:thingsboard_client/thingsboard_client.dart';
 import '../../config/app_config.dart';
 
@@ -69,7 +68,7 @@ class ThingsBoardStatusRepository {
       print('[TB] $index번 농가($customerName) 로딩 완료');
 
       return devices.data
-          .where((d) => !(d.type ?? '').contains('Sook Master'))
+          .where((d) => !(d.type).contains('Sook Master'))
           .map((d) => Sensor.fromJson(d.toJson(), d.active ?? false))
           .toList();
     } catch (e) {

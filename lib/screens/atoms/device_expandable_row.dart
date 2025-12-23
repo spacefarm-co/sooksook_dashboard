@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:finger_farm/data/providers/customer_sensor_provider.dart';
 import 'package:finger_farm/data/providers/expanded_state_provider.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +18,12 @@ class DeviceExpandableRow extends ConsumerWidget {
     final sensorAsync = ref.watch(customerSensorProvider((name: device.customerName, index: index)));
     final isExpanded = ref.watch(expandedStateProvider(device.customerName));
 
+    // 모델에 저장된 updatedAt 날짜 포맷팅
+    final String formattedUpdateAt =
+        device.lastUpdated?.updatedAt != null
+            ? DateFormat('MM-dd HH:mm:ss').format(device.lastUpdated!.updatedAt!)
+            : '기록 없음';
+
     return Column(
       children: [
         InkWell(
@@ -29,18 +36,42 @@ class DeviceExpandableRow extends ConsumerWidget {
             ),
             child: Row(
               children: [
+                // 0. 인덱스
                 SizedBox(width: 30, child: Text('$index', style: const TextStyle(fontSize: 10, color: Colors.grey))),
+
+                // 1. 농가명
                 Expanded(
-                  flex: 2,
+                  flex: 1,
                   child: Text(device.customerName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
+
+                // 2. 지역명
                 Expanded(
                   flex: 1,
                   child: Text(device.regionName, style: const TextStyle(fontSize: 11, color: Colors.blueGrey)),
                 ),
+
+                // 3. 디바이스명
                 Expanded(flex: 2, child: Text(device.deviceName, style: const TextStyle(fontSize: 11))),
+
+                // 4. Balena 클라우드링크
                 Expanded(flex: 1, child: _buildSimpleStatus(device.isCloudlinkOnline)),
+
+                // 5. Balena 하트비트
                 Expanded(flex: 1, child: _buildSimpleStatus(device.isHeartbeatOnline)),
+
+                Expanded(
+                  flex: 1,
+                  child: Text(
+                    formattedUpdateAt,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey[600],
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+
                 Expanded(
                   flex: 1,
                   child: Row(
@@ -93,6 +124,8 @@ class DeviceExpandableRow extends ConsumerWidget {
     );
   }
 
+  // --- 헬퍼 위젯들 ---
+
   Widget _buildExpandedDetails(List<Sensor> sensors) {
     return Container(
       width: double.infinity,
@@ -114,7 +147,6 @@ class DeviceExpandableRow extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     child: Row(
                       children: const [
-                        // 비율 1:2:2 (상태:타입:센서명) + 값(1) + 시간(2)
                         Expanded(flex: 1, child: Text("상태", style: TextStyle(fontSize: 9, color: Colors.grey))),
                         Expanded(flex: 2, child: Text("타입", style: TextStyle(fontSize: 9, color: Colors.grey))),
                         Expanded(flex: 2, child: Text("센서명", style: TextStyle(fontSize: 9, color: Colors.grey))),
@@ -159,10 +191,7 @@ class DeviceExpandableRow extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          // 비율 1 (상태)
           Expanded(flex: 1, child: _buildStatusBadge(sensor.isActive)),
-
-          // 비율 2 (타입)
           Expanded(
             flex: 2,
             child: Text(
@@ -171,8 +200,6 @@ class DeviceExpandableRow extends ConsumerWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-
-          // 비율 2 (센서명)
           Expanded(
             flex: 2,
             child: Text(
@@ -181,18 +208,14 @@ class DeviceExpandableRow extends ConsumerWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-
-          // 비율 1 (현재값)
           Expanded(
             flex: 1,
-            child: Text(
-              "연동 중", // TODO: 실제 데이터 연동
+            child: const Text(
+              "연동 중",
               textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueAccent),
             ),
           ),
-
-          // 비율 2 (시간)
           Expanded(
             flex: 2,
             child: Text(
@@ -209,6 +232,8 @@ class DeviceExpandableRow extends ConsumerWidget {
       ),
     );
   }
+
+  // RTDB 제어 성공 여부 배지
 
   Widget _buildStatusBadge(bool isActive) {
     return Align(

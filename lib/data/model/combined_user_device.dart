@@ -1,3 +1,5 @@
+import 'package:finger_farm/data/model/last_updated.dart';
+
 import 'sensor.dart';
 
 class CombinedUserDevice {
@@ -8,7 +10,7 @@ class CombinedUserDevice {
   final bool isCloudlinkOnline;
   final bool isHeartbeatOnline;
   final List<Sensor> sensors;
-
+  final LastUpdated? lastUpdated;
   CombinedUserDevice({
     required this.customerName,
     required this.deviceName,
@@ -17,6 +19,7 @@ class CombinedUserDevice {
     this.isCloudlinkOnline = false,
     this.isHeartbeatOnline = false,
     this.sensors = const [],
+    this.lastUpdated,
   });
 
   /// [추가] 디바이스 이름을 분석하여 지역명을 반환합니다.
