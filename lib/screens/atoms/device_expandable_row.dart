@@ -62,18 +62,6 @@ class DeviceExpandableRow extends ConsumerWidget {
 
                 Expanded(
                   flex: 1,
-                  child: Text(
-                    formattedUpdateAt,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey[600],
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ),
-
-                Expanded(
-                  flex: 1,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
