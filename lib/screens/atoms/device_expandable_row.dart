@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:finger_farm/data/providers/customer_sensor_provider.dart';
 import 'package:finger_farm/data/providers/expanded_state_provider.dart';
+import 'package:finger_farm/data/providers/user_detail_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -45,6 +46,7 @@ class DeviceExpandableRow extends ConsumerWidget {
                   flex: 1,
                   child: GestureDetector(
                     onTap: () {
+                      ref.read(userDetailProvider.notifier).state = device;
                       context.go('/user_detail');
                     },
                     child: Text(device.customerName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),

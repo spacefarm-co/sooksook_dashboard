@@ -1,44 +1,75 @@
+import 'package:finger_farm/data/repositories/thingsboard_status_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../model/combined_user_device.dart';
 import 'customer_provider.dart';
 import 'balena_device_provider.dart';
 import '../repositories/connectivity_repository.dart';
-import '../repositories/thingsboard_status_repository.dart';
 
 final connectivityRepositoryProvider = Provider((ref) => ConnectivityRepository());
-final tbStatusRepositoryProvider = Provider((ref) => ThingsBoardStatusRepository());
+final tbStatusRepositoryProvider = Provider((ref) => ThingsBoardStatusRepository()); // [핵심] 이 줄이 있어야 에러가 사라집니다.
 
 final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* {
   final connectivityRepo = ref.watch(connectivityRepositoryProvider);
-
   final customersAsync = ref.watch(customersProvider);
   final balenaAsync = ref.watch(balenaDevicesProvider);
 
   if (customersAsync.hasValue && balenaAsync.hasValue) {
-    final customers = customersAsync.value!.docs;
+    final customerDocs = customersAsync.value!.docs;
     final balenaDocs = balenaAsync.value!.docs;
-
-    // 이제 TB API를 기다릴 필요가 없으므로 병렬 처리가 가능합니다.
-    // Future.wait를 사용하여 Balena 정보만 빠르게 가져옵니다.
     final List<Future<CombinedUserDevice>> futures = [];
 
-    for (var custDoc in customers) {
+    for (var custDoc in customerDocs) {
       final custData = custDoc.data() as Map<String, dynamic>;
+      final customerId = custDoc.id;
       final customerName = custData['name'] ?? 'Unknown';
-      final regionName = custData['region_name'] ?? '알수없음'; // 지역 정보 추가
       final sookMasterList = custData['sook_master'] as List? ?? [];
 
-      for (var master in sookMasterList) {
-        final mName = master['name'] ?? '';
-        final token = master['token'] ?? '';
+      // 하위 컬렉션 'farms' 가져오기
+      final farmsSnapshot = await custDoc.reference.collection('farms').get();
 
-        final matchedDev =
-            balenaDocs.where((d) => (d.data() as Map<String, dynamic>)['device_name'] == mName).firstOrNull;
+      for (var farmDoc in farmsSnapshot.docs) {
+        final farmId = farmDoc.id;
 
-        final uuid = (matchedDev?.data() as Map<String, dynamic>?)?['uuid'];
+        // 하위 컬렉션 'facilities' 가져오기
+        final facilitiesSnapshot = await farmDoc.reference.collection('facilities').get();
 
-        // TB 호출을 제거한 가벼운 상태 조회 함수 호출
-        futures.add(_fetchBasicStatuses(connectivityRepo, customerName, regionName, mName, uuid, token));
+        for (var facDoc in facilitiesSnapshot.docs) {
+          final facData = facDoc.data();
+          final facilityId = facDoc.id; // RTDB 매칭용 ID
+          final facilityName = facData['name'] ?? '시설명 없음';
+          final facilityToken = facData['sook_master_token'];
+
+          // 시설 토큰과 일치하는 쑥마스터 정보 매핑
+          final matchedMaster = sookMasterList.firstWhere((m) => m['token'] == facilityToken, orElse: () => null);
+
+          if (matchedMaster != null) {
+            final mName = matchedMaster['name'] ?? '';
+            final mToken = matchedMaster['token'] ?? '';
+
+            // Balena 기기 UUID 매핑
+            final matchedDev =
+                balenaDocs.where((d) {
+                  final dData = d.data() as Map<String, dynamic>;
+                  return dData['device_name'] == mName;
+                }).firstOrNull;
+
+            final uuid = (matchedDev?.data() as Map<String, dynamic>?)?['uuid'];
+
+            futures.add(
+              _fetchBasicStatuses(
+                connectivityRepo,
+                customerId,
+                customerName,
+                farmId,
+                facilityId,
+                facilityName,
+                mName,
+                uuid,
+                mToken,
+              ),
+            );
+          }
+        }
       }
     }
 
@@ -48,12 +79,13 @@ final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* 
     yield [];
   }
 });
-
-/// ThingsBoard 호출을 제외하고 Balena 상태만 빠르게 가져오는 함수
 Future<CombinedUserDevice> _fetchBasicStatuses(
   ConnectivityRepository balenaRepo,
+  String customerId,
   String customerName,
-  String regionName,
+  String farmId,
+  String facilityId,
+  String facilityName,
   String deviceName,
   String? uuid,
   String token,
@@ -73,15 +105,17 @@ Future<CombinedUserDevice> _fetchBasicStatuses(
     }
   }
 
-  // 핵심: Sensors는 빈 리스트로 반환합니다.
-  // 실제 데이터는 UI에서 Expand 할 때 가져옵니다.
   return CombinedUserDevice(
+    customerId: customerId,
     customerName: customerName,
+    farmId: farmId,
+    facilityId: facilityId,
+    facilityName: facilityName,
     deviceName: deviceName,
     uuid: uuid,
     token: token,
     isCloudlinkOnline: cloudlink,
     isHeartbeatOnline: heartbeat,
-    sensors: [],
+    sensors: [], // 센서는 나중에 Expand 시 로드
   );
 }
