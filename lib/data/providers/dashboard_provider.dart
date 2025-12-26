@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:finger_farm/data/repositories/thingsboard_status_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../model/combined_user_device.dart';
@@ -13,66 +14,68 @@ final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* 
   final customersAsync = ref.watch(customersProvider);
   final balenaAsync = ref.watch(balenaDevicesProvider);
 
+  // 1. 필요한 기본 데이터가 로드될 때까지 대기
   if (customersAsync.hasValue && balenaAsync.hasValue) {
-    final customerDocs = customersAsync.value!.docs;
+    final customers = customersAsync.value!.docs;
     final balenaDocs = balenaAsync.value!.docs;
+
+    // 2. 고객 데이터를 ID 기반 Map으로 변환 (검색 속도 최적화)
+    final customerMap = {for (var doc in customers) doc.id: doc};
+
+    // 3. Collection Group을 사용하여 모든 시설 정보를 한 번에 가져옴 (성능 핵심)
+    // 주의: Firebase 콘솔에서 facilities 컬렉션 그룹 인덱스 설정이 필요할 수 있습니다.
+    final allFacilities = await FirebaseFirestore.instance.collectionGroup('facilities').get();
+
     final List<Future<CombinedUserDevice>> futures = [];
 
-    for (var custDoc in customerDocs) {
-      final custData = custDoc.data() as Map<String, dynamic>;
-      final customerId = custDoc.id;
-      final customerName = custData['name'] ?? 'Unknown';
-      final sookMasterList = custData['sook_master'] as List? ?? [];
+    for (var facDoc in allFacilities.docs) {
+      final facData = facDoc.data();
+      final facilityId = facDoc.id;
+      final facilityName = facData['name'] ?? '시설명 없음';
+      final facilityToken = facData['sook_master_token'];
 
-      // 하위 컬렉션 'farms' 가져오기
-      final farmsSnapshot = await custDoc.reference.collection('farms').get();
+      // 경로 분석: facilities/{facId} -> farms/{farmId} -> customers/{custId}
+      // 문서 참조 경로를 통해 상위 ID들을 추출합니다.
+      final farmRef = facDoc.reference.parent.parent;
+      final custRef = farmRef?.parent.parent;
 
-      for (var farmDoc in farmsSnapshot.docs) {
-        final farmId = farmDoc.id;
+      if (custRef != null && customerMap.containsKey(custRef.id)) {
+        final custDoc = customerMap[custRef.id]!;
+        final custData = custDoc.data() as Map<String, dynamic>;
+        final sookMasterList = custData['sook_master'] as List? ?? [];
 
-        // 하위 컬렉션 'facilities' 가져오기
-        final facilitiesSnapshot = await farmDoc.reference.collection('facilities').get();
+        final matchedMaster = sookMasterList.firstWhere((m) => m['token'] == facilityToken, orElse: () => null);
 
-        for (var facDoc in facilitiesSnapshot.docs) {
-          final facData = facDoc.data();
-          final facilityId = facDoc.id; // RTDB 매칭용 ID
-          final facilityName = facData['name'] ?? '시설명 없음';
-          final facilityToken = facData['sook_master_token'];
+        if (matchedMaster != null) {
+          final mName = matchedMaster['name'] ?? '';
 
-          // 시설 토큰과 일치하는 쑥마스터 정보 매핑
-          final matchedMaster = sookMasterList.firstWhere((m) => m['token'] == facilityToken, orElse: () => null);
+          final matchedDev =
+              balenaDocs.where((d) {
+                final dData = d.data() as Map<String, dynamic>;
+                return dData['device_name'] == mName;
+              }).firstOrNull;
 
-          if (matchedMaster != null) {
-            final mName = matchedMaster['name'] ?? '';
-            final mToken = matchedMaster['token'] ?? '';
+          final uuid = (matchedDev?.data() as Map<String, dynamic>?)?['uuid'];
 
-            // Balena 기기 UUID 매핑
-            final matchedDev =
-                balenaDocs.where((d) {
-                  final dData = d.data() as Map<String, dynamic>;
-                  return dData['device_name'] == mName;
-                }).firstOrNull;
-
-            final uuid = (matchedDev?.data() as Map<String, dynamic>?)?['uuid'];
-
-            futures.add(
-              _fetchBasicStatuses(
-                connectivityRepo,
-                customerId,
-                customerName,
-                farmId,
-                facilityId,
-                facilityName,
-                mName,
-                uuid,
-                mToken,
-              ),
-            );
-          }
+          // 4. 병렬 처리를 위해 Future 리스트에 추가
+          futures.add(
+            _fetchBasicStatuses(
+              connectivityRepo,
+              custRef.id,
+              custData['name'] ?? 'Unknown',
+              farmRef!.id,
+              facilityId,
+              facilityName,
+              mName,
+              uuid,
+              facilityToken,
+            ),
+          );
         }
       }
     }
 
+    // 5. 모든 Balena API 호출을 동시에 실행
     final combinedResults = await Future.wait(futures);
     yield combinedResults;
   } else {

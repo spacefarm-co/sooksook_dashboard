@@ -1,14 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:finger_farm/data/model/last_updated.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ConnectivityRepository {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
-  final FirebaseDatabase _rtdb = FirebaseDatabase.instance;
 
   findSookMasterNameByFacilityId(String? currentCustomerId, String? facilityId) async {
     final customerDoc = await firestore.collection('customers').doc(currentCustomerId).get();
@@ -93,45 +88,6 @@ class ConnectivityRepository {
     } catch (e) {
       // Handle any errors
       print('Error occurred: $e');
-    }
-  }
-
-  Future<bool> checkRealConnection() async {
-    try {
-      final result = await InternetAddress.lookup('google.com');
-      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-    } on SocketException catch (_) {
-      try {
-        final result = await InternetAddress.lookup('cloudflare.com');
-        return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-      } on SocketException catch (_) {
-        return false;
-      }
-    }
-  }
-
-  Future<bool?> checkConnectionType() async {
-    final List<ConnectivityResult> connectivityResult = await (Connectivity().checkConnectivity());
-
-    if (connectivityResult.contains(ConnectivityResult.mobile)) {
-      return false;
-    } else if (connectivityResult.contains(ConnectivityResult.wifi)) {
-      return true;
-    } else {
-      return null;
-    }
-  }
-
-  Future<LastUpdated?> getLastUpdate(String facilityId) async {
-    try {
-      final snapshot = await _rtdb.ref('facilities/$facilityId/last_updated').get();
-      if (snapshot.exists && snapshot.value is Map) {
-        return LastUpdated.fromJson(snapshot.value as Map);
-      }
-      return null;
-    } catch (e) {
-      print('RTDB 조회 실패 ($facilityId): $e');
-      return null;
     }
   }
 }

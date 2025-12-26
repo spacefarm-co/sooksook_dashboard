@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:finger_farm/data/providers/customer_sensor_provider.dart';
 import 'package:finger_farm/data/providers/expanded_state_provider.dart';
-import 'package:finger_farm/data/providers/realtime_database_provider.dart';
+import 'package:finger_farm/data/providers/last_updated_provider.dart';
 import 'package:finger_farm/data/providers/user_detail_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,14 +19,14 @@ class DeviceExpandableRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sensorAsync = ref.watch(customerSensorProvider((name: device.customerName, index: index)));
-    final isExpanded = ref.watch(expandedStateProvider(device.customerName));
+    final sensorAsync = ref.watch(customerSensorProvider((customerId: device.customerId, index: index)));
+    final isExpanded = ref.watch(expandedStateProvider(device.facilityId));
 
     return Column(
       children: [
         InkWell(
           onTap: () {
-            final notifier = ref.read(expandedStateProvider(device.customerName).notifier);
+            final notifier = ref.read(expandedStateProvider(device.facilityId).notifier);
             notifier.state = !isExpanded;
           },
           child: Container(
