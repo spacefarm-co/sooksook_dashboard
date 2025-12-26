@@ -61,7 +61,7 @@ class ThingsBoardStatusRepository {
 
       // 2. 해당 고객의 기기 정보 조회 (페이지네이션)
       // 센서 값을 가져오지 않으므로 한 페이지 당 개수를 조금 더 늘려도 안전합니다.
-      final devices = await _tbClient.getDeviceService().getCustomerDeviceInfos(customer.id!.id!, PageLink(50));
+      final devices = await _tbClient.getDeviceService().getCustomerDeviceInfos(customer.id!.id!, PageLink(10));
 
       // 3. 'Sook Master' 제외 및 Sensor 객체로 변환
       // 텔레메트리 루프를 돌지 않고 바로 매핑하여 처리 속도가 매우 빠릅니다.

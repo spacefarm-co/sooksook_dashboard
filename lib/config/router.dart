@@ -1,5 +1,5 @@
 import 'package:finger_farm/screens/home/home_screeen.dart';
-import 'package:finger_farm/screens/home/user_detail_screen.dart';
+import 'package:finger_farm/screens/user_detail/user_detail_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 

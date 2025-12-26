@@ -7,9 +7,7 @@ import 'package:finger_farm/config/router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 이제 파일이 있으니 주석을 해제하고 정상적으로 초기화합니다.
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await initializeFirebase();
   try {
     await dotenv.load(fileName: ".env");
     print(".env 로드 성공");
@@ -17,6 +15,14 @@ void main() async {
     print(".env 로드 실패: $e");
   }
   runApp(const ProviderScope(child: MyApp()));
+}
+
+Future<void> initializeFirebase() async {
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  } catch (e) {
+    print('Error initializing Firebase: $e');
+  }
 }
 
 class MyApp extends ConsumerWidget {
