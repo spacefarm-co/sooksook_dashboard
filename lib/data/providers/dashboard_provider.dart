@@ -19,11 +19,8 @@ final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* 
     final customers = customersAsync.value!.docs;
     final balenaDocs = balenaAsync.value!.docs;
 
-    // 2. 고객 데이터를 ID 기반 Map으로 변환 (검색 속도 최적화)
     final customerMap = {for (var doc in customers) doc.id: doc};
 
-    // 3. Collection Group을 사용하여 모든 시설 정보를 한 번에 가져옴 (성능 핵심)
-    // 주의: Firebase 콘솔에서 facilities 컬렉션 그룹 인덱스 설정이 필요할 수 있습니다.
     final allFacilities = await FirebaseFirestore.instance.collectionGroup('facilities').get();
 
     final List<Future<CombinedUserDevice>> futures = [];
@@ -34,8 +31,6 @@ final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* 
       final facilityName = facData['name'] ?? '시설명 없음';
       final facilityToken = facData['sook_master_token'];
 
-      // 경로 분석: facilities/{facId} -> farms/{farmId} -> customers/{custId}
-      // 문서 참조 경로를 통해 상위 ID들을 추출합니다.
       final farmRef = facDoc.reference.parent.parent;
       final custRef = farmRef?.parent.parent;
 
@@ -57,7 +52,6 @@ final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* 
 
           final uuid = (matchedDev?.data() as Map<String, dynamic>?)?['uuid'];
 
-          // 4. 병렬 처리를 위해 Future 리스트에 추가
           futures.add(
             _fetchBasicStatuses(
               connectivityRepo,
@@ -82,6 +76,7 @@ final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* 
     yield [];
   }
 });
+
 Future<CombinedUserDevice> _fetchBasicStatuses(
   ConnectivityRepository balenaRepo,
   String customerId,

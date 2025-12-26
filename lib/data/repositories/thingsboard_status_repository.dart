@@ -58,7 +58,7 @@ class ThingsBoardStatusRepository {
               .map((device) => Sensor.fromJson(device.toJson(), device.active ?? false))
               .toList();
 
-      print('[TB] $index번 고객(ID: $customerId) 기기 목록 로드 완료: ${sensorList.length}개');
+      // print('[TB] $index번 고객(ID: $customerId) 기기 목록 로드 완료: ${sensorList.length}개');
       return sensorList;
     } catch (e) {
       print('[TB] ID: $customerId 목록 조회 에러: $e');
