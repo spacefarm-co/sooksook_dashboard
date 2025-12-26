@@ -3,6 +3,7 @@ import 'package:finger_farm/data/providers/customer_sensor_provider.dart';
 import 'package:finger_farm/data/providers/expanded_state_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../data/model/combined_user_device.dart';
 import '../../../../data/model/sensor.dart';
@@ -18,16 +19,16 @@ class DeviceExpandableRow extends ConsumerWidget {
     final sensorAsync = ref.watch(customerSensorProvider((name: device.customerName, index: index)));
     final isExpanded = ref.watch(expandedStateProvider(device.customerName));
 
-    // 모델에 저장된 updatedAt 날짜 포맷팅
-    final String formattedUpdateAt =
-        device.lastUpdated?.updatedAt != null
-            ? DateFormat('MM-dd HH:mm:ss').format(device.lastUpdated!.updatedAt!)
-            : '기록 없음';
-
     return Column(
       children: [
         InkWell(
-          onTap: () => ref.read(expandedStateProvider(device.customerName).notifier).state = !isExpanded,
+          onTap: () async {
+            final notifier = ref.read(expandedStateProvider(device.customerName).notifier);
+
+            // 닫혀있다가 열릴 때만 RTDB 호출
+
+            notifier.state = !isExpanded;
+          },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
             decoration: BoxDecoration(
@@ -42,7 +43,12 @@ class DeviceExpandableRow extends ConsumerWidget {
                 // 1. 농가명
                 Expanded(
                   flex: 1,
-                  child: Text(device.customerName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  child: GestureDetector(
+                    onTap: () {
+                      context.go('/user_detail');
+                    },
+                    child: Text(device.customerName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
                 ),
 
                 // 2. 지역명
