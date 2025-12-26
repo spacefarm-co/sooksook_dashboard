@@ -36,12 +36,12 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
             // 1. 시설 및 기기 기본 정보
             _buildDataSection("시설 및 기기 상세 정보", {
               "고객명": user.customerName,
+              "지역명": user.regionName,
+              "시설명": user.facilityName,
+              "기기명 (Device Name)": user.deviceName,
               "고객 ID": user.customerId,
               "농장 ID": user.farmId,
-              "시설명": user.facilityName,
-              "시설 ID (RTDB Key)": user.facilityId,
-              "기기명 (Device Name)": user.deviceName,
-              "지역명": user.regionName,
+              "시설 ID (facilityId)": user.facilityId,
               "Balena UUID": user.uuid ?? "N/A",
               "쑥마스터 토큰": user.token ?? "N/A",
             }),

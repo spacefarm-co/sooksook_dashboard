@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finger_farm/config/router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeFirebase();
+  await loginAsAdmin();
   try {
     await dotenv.load(fileName: ".env");
     print(".env 로드 성공");
@@ -22,6 +24,15 @@ Future<void> initializeFirebase() async {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   } catch (e) {
     print('Error initializing Firebase: $e');
+  }
+}
+
+Future<void> loginAsAdmin() async {
+  try {
+    await FirebaseAuth.instance.signInWithEmailAndPassword(email: 'tenant@spacefarm.co.kr', password: 'HeetsCoffe1!');
+    print("관리자 로그인 성공");
+  } catch (e) {
+    print("로그인 실패: $e");
   }
 }
 
