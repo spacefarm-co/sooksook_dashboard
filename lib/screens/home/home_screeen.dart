@@ -1,6 +1,6 @@
-import 'package:finger_farm/screens/atoms/dashboard_header.dart';
-import 'package:finger_farm/screens/atoms/dashboard_search_bar.dart';
-import 'package:finger_farm/screens/atoms/device_expandable_row.dart';
+import 'package:finger_farm/screens/widgets/dashboard_header.dart';
+import 'package:finger_farm/screens/widgets/dashboard_search_bar.dart';
+import 'package:finger_farm/screens/widgets/device_expandable_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/providers/dashboard_search_provider.dart';
