@@ -1,6 +1,6 @@
 {
-    "name": "health_check_dashboard",
-    "short_name": "health_check_dashboard",
+    "name": "sooksook_dashboard",
+    "short_name": "sooksook_dashboard",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

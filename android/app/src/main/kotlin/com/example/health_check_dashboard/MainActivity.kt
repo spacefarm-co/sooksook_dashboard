@@ -1,4 +1,4 @@
-package com.example.health_check_dashboard
+package com.example.sooksook_dashboard
 
 import io.flutter.embedding.android.FlutterActivity
 
