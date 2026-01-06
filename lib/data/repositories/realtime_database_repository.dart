@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:finger_farm/data/model/actuator.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../model/last_updated.dart';
@@ -38,6 +39,33 @@ class RealtimeDatabaseRepository {
       print('[RTDB 상세조회 실패] ID: $facilityId / Error: $e');
       return null;
     }
+  }
+
+  Stream<List<Actuator>> watchActuators(String facilityId) {
+    if (facilityId.isEmpty) return Stream.value([]);
+
+    // 스크린샷 경로: facilities/$facilityId/actuators
+    return _dbRef
+        .child('facilities')
+        .child(facilityId)
+        .child('actuators')
+        .onValue // 데이터 변경 시마다 이벤트 발생
+        .map((event) {
+          final Map<dynamic, dynamic>? rawData = event.snapshot.value as Map?;
+          if (rawData == null) return [];
+
+          final List<Actuator> actuators = [];
+          rawData.forEach((key, value) {
+            if (value is Map) {
+              // 제공해주신 Actuator.fromJson 사용
+              actuators.add(Actuator.fromJson(key.toString(), value));
+            }
+          });
+
+          // 정렬 순서대로 정렬해서 반환
+          actuators.sort((a, b) => a.order.compareTo(b.order));
+          return actuators;
+        });
   }
 
   // 스트림 리소스 해제를 위한 dispose 메서드 (필요시 호출)

@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import '../../data/model/combined_user_device.dart';
 import '../../data/model/last_updated.dart';
 import '../../../../data/model/sensor.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DeviceExpandableRow extends ConsumerWidget {
   final CombinedUserDevice device;
@@ -52,7 +53,23 @@ class DeviceExpandableRow extends ConsumerWidget {
                   flex: 1,
                   child: Text(device.regionName, style: const TextStyle(fontSize: 11, color: Colors.blueGrey)),
                 ),
-                Expanded(flex: 2, child: Text(device.deviceName, style: const TextStyle(fontSize: 11))),
+                Expanded(
+                  flex: 2,
+                  child: GestureDetector(
+                    onTap: () => _launchBalenaDashboard(device.uuid),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: Text(
+                        device.deviceName,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.blue, // 클릭 가능함을 알리기 위해 색상 변경
+                          decoration: TextDecoration.underline, // 밑줄 추가
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 Expanded(flex: 1, child: _buildSimpleStatus(device.isCloudlinkOnline)),
                 Expanded(flex: 1, child: _buildSimpleStatus(device.isHeartbeatOnline)),
                 Expanded(
@@ -282,6 +299,16 @@ class DeviceExpandableRow extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _launchBalenaDashboard(String? uuid) async {
+    if (uuid == null || uuid.isEmpty) return;
+
+    final Uri url = Uri.parse('https://dashboard.balena-cloud.com/devices/$uuid/summary');
+
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      debugPrint('Could not launch $url');
+    }
   }
 
   Widget _buildEmptyText(String text) {

@@ -170,16 +170,19 @@ class Actuator {
         : '전원: ${actuator.channel['power']}';
   }
 
-  static String statusKo(String status) {
+  static String statusKo(Actuator actuator) {
+    final status = actuator.status;
+    final isMotor = actuator.type == '모터';
+
     switch (status) {
       case 'open':
-        return '열림';
+        return isMotor ? '열림' : '켜짐';
       case 'close':
-        return '닫힘';
+        return isMotor ? '닫힘' : '꺼짐';
       case 'stop':
         return '정지';
       default:
-        return '';
+        return '알 수 없음';
     }
   }
 }
