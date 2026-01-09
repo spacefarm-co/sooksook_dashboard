@@ -3,11 +3,11 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"flutter_bootstrap.js": "f61d1505fba82e66772a9ef40e892347",
+const RESOURCES = {"flutter_bootstrap.js": "ba057f9c14c13f0872d498dbe11988d8",
 "version.json": "7844abc0154a5766351912ee93adc09b",
 "index.html": "f0b00b3c4ffee8af50be162f843215b4",
 "/": "f0b00b3c4ffee8af50be162f843215b4",
-"main.dart.js": "22211334a9beb99ac1d9c2b27e9c57a9",
+"main.dart.js": "dc3b39e115955bb0be84d1607bedebf9",
 "flutter.js": "76f08d47ff9f5715220992f993002504",
 "favicon.png": "5dcef449791fa27946b3d35ad8803796",
 "icons/Icon-192.png": "ac9a721a12bbc803b44f645561ecb1e1",
@@ -22,7 +22,7 @@ const RESOURCES = {"flutter_bootstrap.js": "f61d1505fba82e66772a9ef40e892347",
 "assets/packages/cupertino_icons/assets/CupertinoIcons.ttf": "33b7d9392238c04c131b6ce224e13711",
 "assets/shaders/ink_sparkle.frag": "ecc85a2e95f5e9f53123dcaf8cb9b6ce",
 "assets/AssetManifest.bin": "e22653ede92eaa0b547b48b0c8b2bc0c",
-"assets/fonts/MaterialIcons-Regular.otf": "073405a40256de1629279bcaddc3d284",
+"assets/fonts/MaterialIcons-Regular.otf": "d59259c0e1d85245f5ef4d760d1e7361",
 "canvaskit/skwasm_st.js": "d1326ceef381ad382ab492ba5d96f04d",
 "canvaskit/skwasm.js": "f2ad9363618c5f62e813740099a80e63",
 "canvaskit/skwasm.js.symbols": "80806576fa1056b43dd6d0b445b4b6f7",

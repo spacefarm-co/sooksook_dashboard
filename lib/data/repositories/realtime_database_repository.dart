@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:finger_farm/data/model/actuator.dart';
+import 'package:finger_farm/data/model/actuator_group.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../model/last_updated.dart';
@@ -66,6 +67,28 @@ class RealtimeDatabaseRepository {
           actuators.sort((a, b) => a.order.compareTo(b.order));
           return actuators;
         });
+  }
+
+  Stream<List<ActuatorGroup>> watchActuatorGroups(String facilityId) {
+    if (facilityId.isEmpty) return Stream.value([]);
+
+    // 경로: facilities/$facilityId/actuator_groups
+    return _dbRef.child('facilities').child(facilityId).child('actuator_groups').onValue.map((event) {
+      final Map<dynamic, dynamic>? rawData = event.snapshot.value as Map?;
+      if (rawData == null) return [];
+
+      final List<ActuatorGroup> groups = [];
+      rawData.forEach((key, value) {
+        if (value is Map) {
+          // 제공해주신 ActuatorGroup.fromJson 사용 (Map<String, dynamic>으로 변환)
+          groups.add(ActuatorGroup.fromJson(Map<String, dynamic>.from(value), key.toString()));
+        }
+      });
+
+      // 스크린샷의 order 값(-1, -3 등)을 기준으로 정렬
+      groups.sort((a, b) => a.order.compareTo(b.order));
+      return groups;
+    });
   }
 
   // 스트림 리소스 해제를 위한 dispose 메서드 (필요시 호출)
