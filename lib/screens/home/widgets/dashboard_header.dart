@@ -1,4 +1,4 @@
-import 'package:finger_farm/screens/widgets/filter_header_cell.dart';
+import 'package:finger_farm/screens/home/widgets/filter_header_cell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

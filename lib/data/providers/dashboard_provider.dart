@@ -14,15 +14,12 @@ final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* 
   final customersAsync = ref.watch(customersProvider);
   final balenaAsync = ref.watch(balenaDevicesProvider);
 
-  // 1. 필요한 기본 데이터가 로드될 때까지 대기
   if (customersAsync.hasValue && balenaAsync.hasValue) {
     final customers = customersAsync.value!.docs;
     final balenaDocs = balenaAsync.value!.docs;
-
     final customerMap = {for (var doc in customers) doc.id: doc};
 
     final allFacilities = await FirebaseFirestore.instance.collectionGroup('facilities').get();
-
     final List<Future<CombinedUserDevice>> futures = [];
 
     for (var facDoc in allFacilities.docs) {
@@ -37,12 +34,16 @@ final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* 
       if (custRef != null && customerMap.containsKey(custRef.id)) {
         final custDoc = customerMap[custRef.id]!;
         final custData = custDoc.data() as Map<String, dynamic>;
+        final customerName = custData['name'] ?? 'Unknown'; // 고객명 추출
         final sookMasterList = custData['sook_master'] as List? ?? [];
 
         final matchedMaster = sookMasterList.firstWhere((m) => m['token'] == facilityToken, orElse: () => null);
 
         if (matchedMaster != null) {
           final mName = matchedMaster['name'] ?? '';
+
+          // [로그 추가] 현재 로드 중인 유저와 시설 정보를 터미널에 출력합니다.
+          print('🔍 유저 로드 중: 고객명($customerName) | 시설($facilityName) | 장치($mName)');
 
           final matchedDev =
               balenaDocs.where((d) {
@@ -52,11 +53,18 @@ final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* 
 
           final uuid = (matchedDev?.data() as Map<String, dynamic>?)?['uuid'];
 
+          // [로그 추가] Balena UUID 매칭 결과 출력
+          if (uuid != null) {
+            print('   ✅ Balena UUID 매칭 성공: $uuid');
+          } else {
+            print('   ⚠️ Balena UUID 매칭 실패 (Device Name 불일치 가능성)');
+          }
+
           futures.add(
             _fetchBasicStatuses(
               connectivityRepo,
               custRef.id,
-              custData['name'] ?? 'Unknown',
+              customerName,
               farmRef!.id,
               facilityId,
               facilityName,
@@ -69,7 +77,6 @@ final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* 
       }
     }
 
-    // 5. 모든 Balena API 호출을 동시에 실행
     final combinedResults = await Future.wait(futures);
     yield combinedResults;
   } else {

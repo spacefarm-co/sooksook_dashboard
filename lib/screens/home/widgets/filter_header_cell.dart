@@ -1,7 +1,7 @@
-import 'package:finger_farm/screens/widgets/filter_tile.dart';
+import 'package:finger_farm/screens/home/widgets/filter_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../data/providers/dashboard_search_provider.dart';
+import '../../../../../data/providers/dashboard_search_provider.dart';
 
 class FilterHeaderCell extends ConsumerWidget {
   final int flex;

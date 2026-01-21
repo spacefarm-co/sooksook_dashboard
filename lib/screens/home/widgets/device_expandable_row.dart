@@ -7,9 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../data/model/combined_user_device.dart';
-import '../../data/model/last_updated.dart';
-import '../../../../data/model/sensor.dart';
+import '../../../data/model/combined_user_device.dart';
+import '../../../data/model/last_updated.dart';
+import '../../../../../data/model/sensor.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DeviceExpandableRow extends ConsumerWidget {

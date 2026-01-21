@@ -22,7 +22,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(path: '/user_detail', builder: (context, state) => const UserDetailScreen()),
-      // ... 나머지 라우트
     ],
   );
 });
