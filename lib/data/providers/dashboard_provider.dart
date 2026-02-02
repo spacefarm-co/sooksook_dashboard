@@ -1,126 +1,81 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:finger_farm/data/repositories/thingsboard_status_repository.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../model/combined_user_device.dart';
+import '../model/balena_device_model.dart'; // 모델 import 확인
 import 'customer_provider.dart';
-import 'balena_device_provider.dart';
-import '../repositories/connectivity_repository.dart';
+import '../repositories/balena_repository.dart';
 
-final connectivityRepositoryProvider = Provider((ref) => ConnectivityRepository());
-final tbStatusRepositoryProvider = Provider((ref) => ThingsBoardStatusRepository()); // [핵심] 이 줄이 있어야 에러가 사라집니다.
+final balenaRepositoryProvider = Provider((ref) => BalenaRepository());
+final tbStatusRepositoryProvider = Provider((ref) => ThingsBoardStatusRepository());
 
 final dashboardProvider = StreamProvider<List<CombinedUserDevice>>((ref) async* {
-  final connectivityRepo = ref.watch(connectivityRepositoryProvider);
+  final connectivityRepo = ref.watch(balenaRepositoryProvider);
   final customersAsync = ref.watch(customersProvider);
-  final balenaAsync = ref.watch(balenaDevicesProvider);
 
-  if (customersAsync.hasValue && balenaAsync.hasValue) {
+  if (customersAsync.hasValue) {
     final customers = customersAsync.value!.docs;
-    final balenaDocs = balenaAsync.value!.docs;
     final customerMap = {for (var doc in customers) doc.id: doc};
 
-    final allFacilities = await FirebaseFirestore.instance.collectionGroup('facilities').get();
-    final List<Future<CombinedUserDevice>> futures = [];
+    // 1. [Balena 로드] 모델 리스트로 가져오기
+    final List<BalenaDeviceModel> balenaDevices = await connectivityRepo.fetchDevicesWithFacilityId();
 
-    for (var facDoc in allFacilities.docs) {
-      final facData = facDoc.data();
-      final facilityId = facDoc.id;
-      final facilityName = facData['name'] ?? '시설명 없음';
-      final facilityToken = facData['sook_master_token'];
+    // 2. [Firestore 로드] 모든 시설 정보 메모리 적재
+    final allFacilitiesSnapshot = await FirebaseFirestore.instance.collectionGroup('facilities').get();
+    final facilityMap = {for (var doc in allFacilitiesSnapshot.docs) doc.id: doc};
 
-      final farmRef = facDoc.reference.parent.parent;
-      final custRef = farmRef?.parent.parent;
+    final List<CombinedUserDevice> combinedResults = [];
 
-      if (custRef != null && customerMap.containsKey(custRef.id)) {
-        final custDoc = customerMap[custRef.id]!;
-        final custData = custDoc.data() as Map<String, dynamic>;
-        final customerName = custData['name'] ?? 'Unknown'; // 고객명 추출
-        final sookMasterList = custData['sook_master'] as List? ?? [];
+    // 3. [매칭] Balena 모델 리스트를 기준으로 순회
+    for (var bDev in balenaDevices) {
+      final String? bFacilityId = bDev.facilityId;
 
-        final matchedMaster = sookMasterList.firstWhere((m) => m['token'] == facilityToken, orElse: () => null);
+      // 유효하지 않은 ID 값 필터링
+      if (bFacilityId == null || bFacilityId == 'FacilityId' || bFacilityId.isEmpty) continue;
 
-        if (matchedMaster != null) {
-          final mName = matchedMaster['name'] ?? '';
+      // 메모리 맵에서 시설 조회
+      final facDoc = facilityMap[bFacilityId];
+      if (facDoc == null) {
+        debugPrint('⚠️ [매칭 실패] Balena ID($bFacilityId)가 Firestore 시설 목록에 없음');
+        continue;
+      }
 
-          // [로그 추가] 현재 로드 중인 유저와 시설 정보를 터미널에 출력합니다.
-          print('🔍 유저 로드 중: 고객명($customerName) | 시설($facilityName) | 장치($mName)');
+      try {
+        final facData = facDoc.data();
 
-          final matchedDev =
-              balenaDocs.where((d) {
-                final dData = d.data() as Map<String, dynamic>;
-                return dData['device_name'] == mName;
-              }).firstOrNull;
+        // 계층 구조 추적
+        final farmRef = facDoc.reference.parent.parent;
+        final custRef = farmRef?.parent.parent;
 
-          final uuid = (matchedDev?.data() as Map<String, dynamic>?)?['uuid'];
+        if (custRef != null && customerMap.containsKey(custRef.id)) {
+          final custDoc = customerMap[custRef.id]!;
+          final custData = custDoc.data() as Map<String, dynamic>;
 
-          // [로그 추가] Balena UUID 매칭 결과 출력
-          if (uuid != null) {
-            print('   ✅ Balena UUID 매칭 성공: $uuid');
-          } else {
-            print('   ⚠️ Balena UUID 매칭 실패 (Device Name 불일치 가능성)');
-          }
-
-          futures.add(
-            _fetchBasicStatuses(
-              connectivityRepo,
-              custRef.id,
-              customerName,
-              farmRef!.id,
-              facilityId,
-              facilityName,
-              mName,
-              uuid,
-              facilityToken,
+          combinedResults.add(
+            CombinedUserDevice(
+              customerId: custRef.id,
+              customerName: custData['name'] ?? 'Unknown',
+              farmId: farmRef!.id,
+              facilityId: facDoc.id,
+              facilityName: facData['name'] ?? '시설명 없음',
+              deviceName: bDev.deviceName, // 모델 속성 사용
+              uuid: bDev.uuid, // 모델 속성 사용
+              token: '',
+              isCloudlinkOnline: bDev.isOnline, // 모델 속성 사용
+              isHeartbeatOnline: bDev.status == 'online', // 모델 속성 사용
+              sensors: [],
             ),
           );
         }
+      } catch (e) {
+        debugPrint('🔥 [${bDev.deviceName}] 데이터 구성 중 예외 발생: $e');
       }
     }
 
-    final combinedResults = await Future.wait(futures);
+    debugPrint('📊 [결과] 최종 ${combinedResults.length}개의 매칭 데이터 생성 완료');
     yield combinedResults;
   } else {
     yield [];
   }
 });
-
-Future<CombinedUserDevice> _fetchBasicStatuses(
-  ConnectivityRepository balenaRepo,
-  String customerId,
-  String customerName,
-  String farmId,
-  String facilityId,
-  String facilityName,
-  String deviceName,
-  String? uuid,
-  String token,
-) async {
-  bool cloudlink = false;
-  bool heartbeat = false;
-
-  if (uuid != null) {
-    try {
-      final status = await balenaRepo.getDeviceByUUID(uuid);
-      if (status != null && status.isNotEmpty) {
-        cloudlink = status['is_online'] ?? false;
-        heartbeat = status['api_heartbeat_state'] == 'online';
-      }
-    } catch (e) {
-      print('Balena API Error ($deviceName): $e');
-    }
-  }
-
-  return CombinedUserDevice(
-    customerId: customerId,
-    customerName: customerName,
-    farmId: farmId,
-    facilityId: facilityId,
-    facilityName: facilityName,
-    deviceName: deviceName,
-    uuid: uuid,
-    token: token,
-    isCloudlinkOnline: cloudlink,
-    isHeartbeatOnline: heartbeat,
-    sensors: [], // 센서는 나중에 Expand 시 로드
-  );
-}

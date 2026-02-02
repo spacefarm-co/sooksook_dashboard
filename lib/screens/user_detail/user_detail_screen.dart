@@ -32,7 +32,6 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
     final detailedAsync = ref.watch(detailedSensorProvider(user.customerName));
     final actuatorsAsync = ref.watch(actuatorsProvider(user.facilityId));
     final groupsAsync = ref.watch(actuatorGroupsProvider(user.facilityId));
-    final jiraAsync = ref.watch(jiraIssuesProvider(user.customerName));
 
     return Scaffold(
       appBar: AppBar(
@@ -46,18 +45,17 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. 상단 기본 정보 섹션
+              // 1. 상단 기본 정보 섹션 (기기명 클릭 시 이동 기능 포함)
               _buildDataSection("시설 및 기기 상세 정보", {
                 "고객명": user.customerName,
                 "지역명": user.regionName,
                 "시설명": user.facilityName ?? "N/A",
                 "기기명 (Device Name)": user.deviceName,
                 "Balena UUID": user.uuid ?? "N/A",
-                "쑥마스터 토큰": user.token ?? "N/A",
                 "시설 ID": user.facilityId,
               }, uuid: user.uuid),
 
-              // 2. 3분할 관제 영역
+              // 2. 3분할 관제 영역 (센서 및 액추에이터)
               IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,7 +86,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
 
                     Container(width: 1, color: Colors.grey[300]),
 
-                    // [중앙: 2/4] 액추에이터 제어 섹션 (개별 vs 그룹 2분할)
+                    // [중앙: 2/4] 액추에이터 제어 섹션
                     Expanded(
                       flex: 2,
                       child: Column(
@@ -99,7 +97,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // [중앙-좌] 개별 제어
+                                // 개별 제어
                                 Expanded(
                                   child: Column(
                                     children: [
@@ -115,7 +113,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                                   ),
                                 ),
                                 Container(width: 1, color: Colors.grey[200]),
-                                // [중앙-우] 그룹 제어
+                                // 그룹 제어
                                 Expanded(
                                   child: Column(
                                     children: [
@@ -136,31 +134,6 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                         ],
                       ),
                     ),
-
-                    Container(width: 1, color: Colors.grey[300]),
-
-                    // [우측: 1/4] Jira 티켓 이력
-                    // Expanded(
-                    //   flex: 1,
-                    //   child: Column(
-                    //     crossAxisAlignment: CrossAxisAlignment.start,
-                    //     children: [
-                    //       _buildSubHeader("기술 지원 및 개통 이력 (Jira)", const Color(0xFF0052CC)),
-                    //       jiraAsync.when(
-                    //         data:
-                    //             (issues) =>
-                    //                 issues.isEmpty
-                    //                     ? _buildEmptyText("관련 티켓이 없습니다.")
-                    //                     : Column(children: issues.map((i) => _buildJiraCard(i)).toList()),
-                    //         loading:
-                    //             () => const Center(
-                    //               child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()),
-                    //             ),
-                    //         error: (err, _) => _buildEmptyText("Jira 로드 실패"),
-                    //       ),
-                    //     ],
-                    //   ),
-                    // ),
                   ],
                 ),
               ),
@@ -308,42 +281,6 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
     );
   }
 
-  Widget _buildJiraCard(JiraIssue issue) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.black12))),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _miniTag(issue.projectKey),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  issue.summary,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _statusBadge(issue.status == 'Done' || issue.status == '완료' ? 'open' : 'stop', issue.status),
-              Text(
-                DateFormat('yy-MM-dd').format(issue.updated),
-                style: const TextStyle(fontSize: 10, color: Colors.grey),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildDataSection(String title, Map<String, String> data, {String? uuid}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,7 +292,9 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
           child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
         ),
         ...data.entries.map((e) {
-          final isUuidField = e.key == "Balena UUID" && e.value != "N/A";
+          // [수정] 기기명(Device Name) 필드만 클릭 시 이동하도록 설정
+          final isDeviceNameField = e.key == "기기명 (Device Name)" && e.value != "N/A" && uuid != null;
+
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
@@ -363,7 +302,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                 SizedBox(width: 150, child: Text(e.key, style: const TextStyle(color: Colors.black54, fontSize: 13))),
                 Expanded(
                   child:
-                      isUuidField
+                      isDeviceNameField
                           ? GestureDetector(
                             onTap: () => _launchBalenaDashboard(uuid),
                             child: MouseRegion(
@@ -426,14 +365,6 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
     if (uuid == null || uuid.isEmpty) return;
     final Uri url = Uri.parse('https://dashboard.balena-cloud.com/devices/$uuid/summary');
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) debugPrint('Error launch $url');
-  }
-
-  Widget _miniTag(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(4)),
-      child: Text(label, style: const TextStyle(fontSize: 9, color: Colors.black54, fontWeight: FontWeight.bold)),
-    );
   }
 
   Widget _buildEmptyText(String text) {
